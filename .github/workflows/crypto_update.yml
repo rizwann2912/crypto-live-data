@@ -33,4 +33,7 @@ jobs:
     - name: Run Crypto Data Script
       env:
         GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}  # Use GitHub Secret
-      run: python -u script.py || { echo "❌ ERROR: script.py failed"; exit 1; }
+      
+    - name: Run script
+      run: |
+          python -u script.py || { echo "❌ ERROR: script.py failed"; exit 1; }

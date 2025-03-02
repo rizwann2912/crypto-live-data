@@ -2,6 +2,8 @@
 
 This project fetches cryptocurrency market data from the CoinGecko API, analyzes it, and updates a Google Sheets document with real-time insights. The script runs automatically using GitHub Actions every 5 minutes or can be triggered manually.
 
+Google Sheet link- https://docs.google.com/spreadsheets/d/1qHxDgo1PyT59hHwRJmtml1xdMS5scz86j34Zlu4IoWY/edit?gid=0#gid=0
+
 ## Features
 - Fetches real-time cryptocurrency data from the CoinGecko API.
 - Analyzes top 5 cryptocurrencies by market cap.

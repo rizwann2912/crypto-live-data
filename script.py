@@ -55,4 +55,47 @@ def update_google_sheets():
         print("No data fetched.")
         return
 
-    df, top_5
+    df, top_5, avg_price, highest_change, lowest_change = analyze_data(data)
+    
+    # Convert data to list format for Google Sheets
+    rows = df.values.tolist()
+    top_5_rows = top_5.values.tolist()
+
+    headers = ["Name", "Symbol", "Price (USD)", "Market Cap", "24h Volume", "24h Change (%)"]
+
+    # **Clear old data & update main crypto data**
+    sheet.clear()
+    sheet.append_row(headers)
+    sheet.append_rows(rows)
+    
+    # **Create or update Top 5 Cryptos sheet**
+    try:
+        top_5_sheet = client.open_by_key(SHEET_ID).add_worksheet(title="Top 5 Cryptos", rows=10, cols=6)
+    except gspread.exceptions.APIError:
+        top_5_sheet = client.open_by_key(SHEET_ID).worksheet("Top 5 Cryptos")
+        top_5_sheet.clear()
+
+    top_5_sheet.append_row(headers)
+    top_5_sheet.append_rows(top_5_rows)
+
+    # **Create or update Summary Data sheet**
+    summary_headers = ["Metric", "Value"]
+    summary_data = [
+        ["Average Price (USD)", avg_price],
+        ["Highest 24h Change", f"{highest_change['name']} ({highest_change['price_change_percentage_24h']}%)"],
+        ["Lowest 24h Change", f"{lowest_change['name']} ({lowest_change['price_change_percentage_24h']}%)"]
+    ]
+
+    try:
+        summary_sheet = client.open_by_key(SHEET_ID).add_worksheet(title="Analysis Summary", rows=10, cols=2)
+    except gspread.exceptions.APIError:
+        summary_sheet = client.open_by_key(SHEET_ID).worksheet("Analysis Summary")
+        summary_sheet.clear()
+
+    summary_sheet.append_row(summary_headers)
+    summary_sheet.append_rows(summary_data)
+
+    print("Google Sheets updated successfully with analysis!")
+
+if __name__ == "__main__":
+    update_google_sheets()

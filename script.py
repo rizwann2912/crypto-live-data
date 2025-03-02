@@ -1,4 +1,5 @@
 import requests
+import base64
 import pandas as pd
 import gspread
 import json
@@ -7,7 +8,14 @@ from google.oauth2.service_account import Credentials
 
 SHEET_ID = "1qHxDgo1PyT59hHwRJmtml1xdMS5scz86j34Zlu4IoWY"
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-service_account_info = json.loads(os.getenv("GCP_SERVICE_ACCOUNT"))
+
+# Decode base64 secret
+service_account_json = base64.b64decode(os.getenv("GCP_SERVICE_ACCOUNT")).decode("utf-8")
+
+# Load credentials
+service_account_info = json.loads(service_account_json)
+CREDS = Credentials.from_service_account_info(service_account_info, scopes=SCOPES)
+
 CREDS = Credentials.from_service_account_info(service_account_info, scopes=SCOPES)
 client = gspread.authorize(CREDS)
 sheet = client.open_by_key(SHEET_ID).worksheet("crypto_data")

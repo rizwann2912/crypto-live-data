@@ -6,6 +6,8 @@ import json
 import os
 from google.oauth2.service_account import Credentials
 
+print('SCRIPT STARTED')
+
 SHEET_ID = "1qHxDgo1PyT59hHwRJmtml1xdMS5scz86j34Zlu4IoWY"
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
 

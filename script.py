@@ -10,7 +10,14 @@ SHEET_ID = "1qHxDgo1PyT59hHwRJmtml1xdMS5scz86j34Zlu4IoWY"
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
 
 # Decode base64 secret from GitHub Secrets
-service_account_json = base64.b64decode(os.getenv("GCP_SERVICE_ACCOUNT")).decode("utf-8")
+service_account_json = os.getenv("GCP_SERVICE_ACCOUNT")
+
+if not service_account_json:
+    print("❌ ERROR: GCP_SERVICE_ACCOUNT environment variable is missing!")
+    exit(1)
+
+# Decode base64 secret
+service_account_json = base64.b64decode(service_account_json).decode("utf-8")
 
 # Load credentials
 service_account_info = json.loads(service_account_json)
@@ -25,17 +32,18 @@ def fetch_crypto_data():
     params = {
         "vs_currency": "usd",
         "order": "market_cap_desc",
-        "per_page": 50,  # Top 50 cryptocurrencies
+        "per_page": 50,
         "page": 1,
         "sparkline": False
     }
-    
+
     response = requests.get(url, params=params)
     if response.status_code == 200:
         return response.json()
     else: 
-        print("Error fetching data:", response.status_code)
-        return None
+        print(f"❌ ERROR: Failed to fetch data. Status Code: {response.status_code}")
+        print("Response:", response.text)
+        exit(1)
 
 def analyze_data(data):
     df = pd.DataFrame(data)[["name", "symbol", "current_price", "market_cap", "total_volume", "price_change_percentage_24h"]]
@@ -70,10 +78,10 @@ def update_google_sheets():
     
     # **Create or update Top 5 Cryptos sheet**
     try:
-        top_5_sheet = client.open_by_key(SHEET_ID).add_worksheet(title="Top 5 Cryptos", rows=10, cols=6)
-    except gspread.exceptions.APIError:
-        top_5_sheet = client.open_by_key(SHEET_ID).worksheet("Top 5 Cryptos")
-        top_5_sheet.clear()
+    top_5_sheet = client.open_by_key(SHEET_ID).add_worksheet(title="Top 5 Cryptos", rows=10, cols=6)
+    except (gspread.exceptions.APIError, gspread.exceptions.WorksheetNotFound):
+    top_5_sheet = client.open_by_key(SHEET_ID).worksheet("Top 5 Cryptos")
+    top_5_sheet.clear()
 
     top_5_sheet.append_row(headers)
     top_5_sheet.append_rows(top_5_rows)

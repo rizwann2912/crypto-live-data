@@ -19,21 +19,18 @@ jobs:
         python-version: '3.12'
 
     - name: Install Dependencies
-      run: pip install -r requirements.txt
+      run: |
+        pip install -r requirements.txt
+
+    - name: Verify Repository Files
+      run: ls -R  # Check if script.py exists in the repo
 
     - name: Check Environment Variables
-      run: |
-        if [[ -z "$GCP_SERVICE_ACCOUNT" ]]; then
-          echo "❌ ERROR: GCP_SERVICE_ACCOUNT is missing!"
-          exit 1
-        else
-          echo "✅ GCP_SERVICE_ACCOUNT is set."
-          echo $GCP_SERVICE_ACCOUNT | base64 --decode | jq .
-        fi
+      run: echo "GCP_SERVICE_ACCOUNT is set"
       env:
         GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
     - name: Run Crypto Data Script
       env:
-        GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-      run: python script.py
+        GCP_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}  # Use GitHub Secret
+      run: python -u script.py || { echo "❌ ERROR: script.py failed"; exit 1; }

@@ -1,6 +1,39 @@
 import requests
 import pandas as pd
 import gspread
+import json
+import os
+from google.oauth2.service_account import Credentials
+
+SHEET_ID = "1qHxDgo1PyT59hHwRJmtml1xdMS5scz86j34Zlu4IoWY"
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+service_account_info = json.loads(os.getenv("GCP_SERVICE_ACCOUNT"))
+CREDS = Credentials.from_service_account_info(service_account_info, scopes=SCOPES)
+client = gspread.authorize(CREDS)
+sheet = client.open_by_key(SHEET_ID).worksheet("crypto_data")
+
+def fetch_crypto_data():
+    url = "https://api.coingecko.com/api/v3/coins/markets"
+    params = {
+        "vs_currency": "usd",
+        "order": "market_cap_desc",
+        "per_page": 50,  # Top 50 cryptocurrencies
+        "page": 1,
+        "sparkline": False
+    }
+    
+    response = requests.get(url, params=params)
+    if response.status_code == 200:
+        return response.json()
+    else: 
+        print("Error fetching data:", response.status_code)
+        return None
+
+
+
+import requests
+import pandas as pd
+import gspread
 from google.oauth2.service_account import Credentials
 
 SHEET_ID = "1qHxDgo1PyT59hHwRJmtml1xdMS5scz86j34Zlu4IoWY"
@@ -39,32 +72,113 @@ def analyze_data(data):
     return df, top_5, avg_price, highest_change, lowest_change
 
 
-def update_excel(df, top_5, avg_price, highest_change, lowest_change, filename="crypto_data.xlsx"):
-    with pd.ExcelWriter(filename, engine="openpyxl") as writer:
-        df.to_excel(writer, sheet_name="Top 50 Cryptos", index=False)
-        top_5.to_excel(writer, sheet_name="Top 5 by Market Cap", index=False)
+def update_google_sheets():
+    print("Fetching live crypto data...")
+    data = fetch_crypto_data()
+    
+    if not data:
+        print("No data fetched.")
+        return
 
-        
-        summary_data = {
-            "Metric": ["Average Price (USD)", "Highest 24h Change", "Lowest 24h Change"],
-            "Value": [avg_price, f"{highest_change['name']} ({highest_change['price_change_percentage_24h']}%)",
-                      f"{lowest_change['name']} ({lowest_change['price_change_percentage_24h']}%)"]
-        }
-        summary_df = pd.DataFrame(summary_data)
-        summary_df.to_excel(writer, sheet_name="Analysis Summary", index=False)
+    # Convert JSON data to DataFrame & perform analysis
+    df, top_5, avg_price, highest_change, lowest_change = analyze_data(data)
 
-    print(f"Excel file '{filename}' updated successfully!")
+    # Convert data to list format for Google Sheets
+    rows = df.values.tolist()
+    top_5_rows = top_5.values.tolist()
+
+    headers = ["Name", "Symbol", "Price (USD)", "Market Cap", "24h Volume", "24h Change (%)"]
+    
+    # **Clear old data & update main crypto data**
+    sheet.clear()
+    sheet.append_row(headers)
+    sheet.append_rows(rows)
+    
+    # **Create a new sheet for Top 5 Cryptos**
+    try:
+        top_5_sheet = client.open_by_key(SHEET_ID).add_worksheet(title="Top 5 Cryptos", rows=10, cols=6)
+    except gspread.exceptions.APIError:
+        top_5_sheet = client.open_by_key(SHEET_ID).worksheet("Top 5 Cryptos")
+        top_5_sheet.clear()
+
+    top_5_sheet.append_row(headers)
+    top_5_sheet.append_rows(top_5_rows)
+
+    # **Create a new sheet for Summary Data**
+    summary_headers = ["Metric", "Value"]
+    summary_data = [
+        ["Average Price (USD)", avg_price],
+        ["Highest 24h Change", f"{highest_change['name']} ({highest_change['price_change_percentage_24h']}%)"],
+        ["Lowest 24h Change", f"{lowest_change['name']} ({lowest_change['price_change_percentage_24h']}%)"]
+    ]
+
+    try:
+        summary_sheet = client.open_by_key(SHEET_ID).add_worksheet(title="Analysis Summary", rows=10, cols=2)
+    except gspread.exceptions.APIError:
+        summary_sheet = client.open_by_key(SHEET_ID).worksheet("Analysis Summary")
+        summary_sheet.clear()
+
+    summary_sheet.append_row(summary_headers)
+    summary_sheet.append_rows(summary_data)
+
+    print("Google Sheets updated successfully with analysis!")
+
+if __name__ == "__main__":
+    update_google_sheets()
+    
+
+
 
 def update_google_sheets():
     print("Fetching live crypto data...")
     data = fetch_crypto_data()
+    
+    if not data:
+        print("No data fetched.")
+        return
+
+    # Convert JSON data to DataFrame & perform analysis
+    df, top_5, avg_price, highest_change, lowest_change = analyze_data(data)
+
+    # Convert data to list format for Google Sheets
+    rows = df.values.tolist()
+    top_5_rows = top_5.values.tolist()
+
     headers = ["Name", "Symbol", "Price (USD)", "Market Cap", "24h Volume", "24h Change (%)"]
     
-    sheet.clear()  # Clear old data
-    sheet.append_row(headers)  # Add headers
-    sheet.append_rows(data)  # Add new data
+    # **Clear old data & update main crypto data**
+    sheet.clear()
+    sheet.append_row(headers)
+    sheet.append_rows(rows)
     
-    print("Google Sheet updated!")
+    # **Create a new sheet for Top 5 Cryptos**
+    try:
+        top_5_sheet = client.open_by_key(SHEET_ID).add_worksheet(title="Top 5 Cryptos", rows=10, cols=6)
+    except gspread.exceptions.APIError:
+        top_5_sheet = client.open_by_key(SHEET_ID).worksheet("Top 5 Cryptos")
+        top_5_sheet.clear()
+
+    top_5_sheet.append_row(headers)
+    top_5_sheet.append_rows(top_5_rows)
+
+    # **Create a new sheet for Summary Data**
+    summary_headers = ["Metric", "Value"]
+    summary_data = [
+        ["Average Price (USD)", avg_price],
+        ["Highest 24h Change", f"{highest_change['name']} ({highest_change['price_change_percentage_24h']}%)"],
+        ["Lowest 24h Change", f"{lowest_change['name']} ({lowest_change['price_change_percentage_24h']}%)"]
+    ]
+
+    try:
+        summary_sheet = client.open_by_key(SHEET_ID).add_worksheet(title="Analysis Summary", rows=10, cols=2)
+    except gspread.exceptions.APIError:
+        summary_sheet = client.open_by_key(SHEET_ID).worksheet("Analysis Summary")
+        summary_sheet.clear()
+
+    summary_sheet.append_row(summary_headers)
+    summary_sheet.append_rows(summary_data)
+
+    print("Google Sheets updated successfully with analysis!")
 
 if __name__ == "__main__":
     update_google_sheets()

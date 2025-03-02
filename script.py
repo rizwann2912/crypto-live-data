@@ -43,7 +43,7 @@ def fetch_crypto_data():
     else: 
         print(f"❌ ERROR: Failed to fetch data. Status Code: {response.status_code}")
         print("Response:", response.text)
-        exit(1)
+        return None  # Don't exit inside a function
 
 def analyze_data(data):
     df = pd.DataFrame(data)[["name", "symbol", "current_price", "market_cap", "total_volume", "price_change_percentage_24h"]]
@@ -61,9 +61,7 @@ def update_google_sheets():
     data = fetch_crypto_data()
     if not data:
         print("❌ No data fetched from API!")
-        exit(1)
-
-
+        return  # Avoid using exit(1) inside functions
 
     df, top_5, avg_price, highest_change, lowest_change = analyze_data(data)
     
@@ -77,13 +75,13 @@ def update_google_sheets():
     sheet.clear()
     sheet.append_row(headers)
     sheet.append_rows(rows)
-    
+
     # **Create or update Top 5 Cryptos sheet**
     try:
-    top_5_sheet = client.open_by_key(SHEET_ID).add_worksheet(title="Top 5 Cryptos", rows=10, cols=6)
-    except (gspread.exceptions.APIError, gspread.exceptions.WorksheetNotFound):
-    top_5_sheet = client.open_by_key(SHEET_ID).worksheet("Top 5 Cryptos")
-    top_5_sheet.clear()
+        top_5_sheet = client.open_by_key(SHEET_ID).add_worksheet(title="Top 5 Cryptos", rows=10, cols=6)
+    except gspread.exceptions.APIError:
+        top_5_sheet = client.open_by_key(SHEET_ID).worksheet("Top 5 Cryptos")
+        top_5_sheet.clear()
 
     top_5_sheet.append_row(headers)
     top_5_sheet.append_rows(top_5_rows)
@@ -105,7 +103,7 @@ def update_google_sheets():
     summary_sheet.append_row(summary_headers)
     summary_sheet.append_rows(summary_data)
 
-    print("Google Sheets updated successfully with analysis!")
+    print("✅ Google Sheets updated successfully with analysis!")
 
 if __name__ == "__main__":
     update_google_sheets()

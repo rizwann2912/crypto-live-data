@@ -56,12 +56,14 @@ def analyze_data(data):
     return df, top_5, avg_price, highest_change, lowest_change
 
 def update_google_sheets():
-    print("Fetching live crypto data...")
+
+    print("✅ Script started successfully.")
     data = fetch_crypto_data()
-    
     if not data:
-        print("No data fetched.")
-        return
+        print("❌ No data fetched from API!")
+        exit(1)
+
+
 
     df, top_5, avg_price, highest_change, lowest_change = analyze_data(data)
     
